@@ -15,11 +15,15 @@ pub enum QuantumOp {
     PauliY,
     PauliZ,
     Hadamard,
+    PauliXPar,
+    PauliYPar,
+    PauliZPar,
+    HadamardPar,
 }
 
-type TargetQubit = u32;
-type QuantumInstructions = Vec<(QuantumOp, TargetQubit)>;
-type MeasuredQubits = Vec<f64>;
+pub type TargetQubit = u32;
+pub type QuantumInstructions = Vec<(QuantumOp, TargetQubit)>;
+pub type MeasuredQubits = Vec<f64>;
 
 /// Quantum Assembly parser module
 pub mod qasm_parser {
@@ -181,6 +185,18 @@ impl QubitLayer {
                 }
                 Some(QuantumOp::Hadamard) => {
                     self.hadamard(target_qubit);
+                }
+                Some(QuantumOp::PauliXPar) => {
+                    self.pauli_x_par(target_qubit);
+                }
+                Some(QuantumOp::PauliYPar) => {
+                    self.pauli_y_par(target_qubit);
+                }
+                Some(QuantumOp::PauliZPar) => {
+                    self.pauli_z_par(target_qubit);
+                }
+                Some(QuantumOp::HadamardPar) => {
+                    self.hadamard_par(target_qubit);
                 }
                 _ => {
                     return Err("Unsupported Operation".to_owned());
