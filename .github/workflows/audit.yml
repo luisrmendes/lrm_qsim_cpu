@@ -8,7 +8,7 @@ on:
       - '**/web_server/Cargo.lock'
 jobs:
   security_audit:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: taiki-e/install-action@cargo-deny
