@@ -89,7 +89,7 @@ pub mod qasm_parser {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct QubitLayer {
     main: Vec<Complex<f64>>,
     parity: Vec<Complex<f64>>,
@@ -118,33 +118,53 @@ impl fmt::Display for QubitLayer {
 }
 
 impl QubitLayer {
-    pub fn execute(&mut self, instructions: Vec<(u8, Vec<u32>)>) -> Result<(), String> {
+    /// Executes multiple quantum assembly instructions.
+    /// Instructions are in the pair format: the first value represents the operation and the second value the target qubit
+    /// Operations are mapped to ints (0 is `pauli_x`, 1 is `pauli_y`, 2 is `pauli_z`, 3 is `hadamard`)
+    ///
+    /// # Examples
+    /// ```
+    /// let mut q_layer = quantum_layer::QubitLayer::new(2);
+    /// let instructions = vec![(0, 0), (3, 1)];
+    /// q_layer.execute(instructions);
+    ///
+    /// let mut q_layer_2 = quantum_layer::QubitLayer::new(2);
+    /// q_layer_2.pauli_x(0);
+    /// q_layer_2.hadamard(1);
+    /// assert_eq!(q_layer, q_layer_2);
+    /// ```
+    ///
+    /// # Errors
+    /// Will return error if receives an unmapped operation integer
+    pub fn execute(&mut self, instructions: Vec<(u8, u32)>) -> Result<(), String> {
         for (op, target_qubit) in instructions {
             match Some(op) {
                 Some(0) => {
-                    self.pauli_x(target_qubit[0]);
+                    self.pauli_x(target_qubit);
                 }
                 Some(1) => {
-                    self.pauli_y(target_qubit[0]);
+                    self.pauli_y(target_qubit);
                 }
                 Some(2) => {
-                    self.pauli_z(target_qubit[0]);
+                    self.pauli_z(target_qubit);
                 }
                 Some(3) => {
-                    self.hadamard(target_qubit[0]);
+                    self.hadamard(target_qubit);
                 }
                 other => {
-                    return Err(format!("Unrecognized Operation {:?}", other).to_owned());
+                    return Err(format!("Unrecognized Operation {other:?}").to_owned());
                 }
             }
         }
         Ok(())
     }
 
+    #[must_use]
     pub fn get_num_qubits(&self) -> u32 {
         self.main.len().ilog2()
     }
 
+    #[must_use]
     pub fn get_size_of(&self) -> usize {
         self.main.len()
     }
@@ -332,6 +352,7 @@ impl QubitLayer {
     }
 }
 
+#[derive(PartialEq)]
 pub struct MeasuredQubits {
     results: Vec<f64>,
 }
@@ -343,6 +364,20 @@ impl MeasuredQubits {
 }
 
 impl fmt::Display for MeasuredQubits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::new();
+        for index_measured_qubits in 0..self.results.len() {
+            output += &format!(
+                "Qubit {0} -> {1}\n",
+                index_measured_qubits + 1,
+                self.results[index_measured_qubits]
+            );
+        }
+        write!(f, "{}", output)
+    }
+}
+
+impl fmt::Debug for MeasuredQubits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         for index_measured_qubits in 0..self.results.len() {
