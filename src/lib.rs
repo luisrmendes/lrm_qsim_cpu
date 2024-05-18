@@ -148,8 +148,8 @@ impl QubitLayer {
     ///
     /// # Examples
     /// ```
-    /// let mut q_layer = quantum_layer::QubitLayer::new(2);
-    /// let instructions = vec![(quantum_layer::QuantumOp::PauliX, 0), (quantum_layer::QuantumOp::PauliX, 1)];
+    /// let mut q_layer = quantum_state_sim::QubitLayer::new(2);
+    /// let instructions = vec![(quantum_state_sim::QuantumOp::PauliX, 0), (quantum_state_sim::QuantumOp::PauliX, 1)];
     /// q_layer.execute(instructions);
     ///
     /// // qubits 0 and 1 must be 1.0

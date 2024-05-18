@@ -364,7 +364,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "quantum_layer"
+name = "quantum_state_sim"
 version = "0.1.0"
 dependencies = [
  "criterion",

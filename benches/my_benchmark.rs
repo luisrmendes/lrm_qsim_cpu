@@ -1,5 +1,5 @@
 use criterion::*;
-use quantum_layer::{self, QubitLayer};
+use quantum_state_sim::{self, QubitLayer};
 
 fn bench_full_hadamard_par_24() {
     let num_qubits = 24;
