@@ -1,0 +1,16 @@
+name: Security audit
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  push:
+    paths:
+      - '**/web_server/Cargo.toml'
+      - '**/web_server/Cargo.lock'
+jobs:
+  security_audit:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      - uses: taiki-e/install-action@cargo-deny
+      - name: Scan for vulnerabilities
+        run: cd web_server && cargo deny check advisories

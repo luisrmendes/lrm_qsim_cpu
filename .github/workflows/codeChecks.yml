@@ -1,0 +1,58 @@
+name: CodeChecks
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Enforce formatting
+        run: cd web_server && cargo fmt --check
+
+  clippy:
+    name: Clippy
+    runs-on: self-hosted
+    needs: fmt
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Linting
+        run: cd web_server && cargo clippy -- -D warnings
+  
+  test:
+    env: # Or as an environment variable
+      FRONTEND_PRODUCTION_URL: ${{ secrets.FRONTEND_PRODUCTION_URL }}
+    name: Test
+    runs-on: self-hosted
+    needs: clippy
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cd web_server && FRONTEND_PRODUCTION_URL=$FRONTEND_PRODUCTION_URL cargo test  
+
+  # coverage:
+  #   name: Code coverage
+  #   runs-on: self-hosted
+  #   needs: test
+  #   container:
+  #     image: xd009642/tarpaulin
+  #     options: --security-opt seccomp=unconfined
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
+  #     - name: Generate code coverage
+  #       run: |
+  #         cd web_server && cargo tarpaulin --verbose --workspace
