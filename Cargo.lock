@@ -370,6 +370,7 @@ dependencies = [
  "criterion",
  "num",
  "rayon",
+ "serde",
 ]
 
 [[package]]

@@ -6,10 +6,12 @@
 use num::pow;
 use num::Complex;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use serde::Serialize;
+use serde::Serializer;
 use std::fmt;
 use std::sync::Mutex;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum QuantumOp {
     PauliX,
     PauliY,
@@ -19,6 +21,26 @@ pub enum QuantumOp {
     PauliYPar,
     PauliZPar,
     HadamardPar,
+}
+
+impl Serialize for QuantumOp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            QuantumOp::PauliX => serializer.serialize_unit_variant("QuantumOp", 0, "PauliX"),
+            QuantumOp::PauliY => serializer.serialize_unit_variant("QuantumOp", 1, "PauliY"),
+            QuantumOp::PauliZ => serializer.serialize_unit_variant("QuantumOp", 1, "PauliZ"),
+            QuantumOp::Hadamard => serializer.serialize_unit_variant("QuantumOp", 1, "Hadamard"),
+            QuantumOp::PauliXPar => serializer.serialize_unit_variant("QuantumOp", 0, "PauliXPar"),
+            QuantumOp::PauliYPar => serializer.serialize_unit_variant("QuantumOp", 1, "PauliYPar"),
+            QuantumOp::PauliZPar => serializer.serialize_unit_variant("QuantumOp", 1, "PauliZPar"),
+            QuantumOp::HadamardPar => {
+                serializer.serialize_unit_variant("QuantumOp", 1, "HadamardPar")
+            }
+        }
+    }
 }
 
 pub type TargetQubit = u32;
