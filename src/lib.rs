@@ -9,15 +9,33 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIter
 use std::fmt;
 use std::sync::Mutex;
 
+#[derive(Clone, PartialEq)]
+pub enum QuantumOp {
+    PauliX,
+    PauliY,
+    PauliZ,
+    Hadamard,
+}
+
+type TargetQubit = u32;
+type QuantumInstructions = Vec<(QuantumOp, TargetQubit)>;
+type MeasuredQubits = Vec<f64>;
+
 pub mod qasm_parser {
     pub struct ParsedInstruct {
         pub num_qubits: u32,
         pub ops: Vec<(u8, Vec<u32>)>,
     }
 
+    ///
+    /// # Errors
+    /// Returns error if encounters semantic errors in the qasm file contents
     pub fn parse(file_contents: &str) -> Result<ParsedInstruct, String> {
         // create a vector of strings split by newline
-        let mut lines: Vec<String> = file_contents.split('\n').map(|s| s.to_owned()).collect();
+        let mut lines: Vec<String> = file_contents
+            .split('\n')
+            .map(std::borrow::ToOwned::to_owned)
+            .collect();
 
         // remove all lines until qreg
         let mut remove_delim = 0;
@@ -31,13 +49,12 @@ pub mod qasm_parser {
 
         // Parse the number of qubits
         let num_qubits: String = lines[0].chars().filter(|&c| c.is_numeric()).collect();
-        let num_qubits = match num_qubits.parse::<u32>() {
-            Ok(x) => x,
-            Err(_) => return Err("Failed to parse the number of qubits!".to_owned()),
+        let Ok(num_qubits) = num_qubits.parse::<u32>() else {
+            return Err("Failed to parse the number of qubits!".to_owned());
         };
 
         // remove all lines before and including qreg
-        lines.drain(0..remove_delim + 1);
+        lines.drain(0..=remove_delim);
 
         // Filter each newline
         let mut parsed_instructions: Vec<(u8, Vec<u32>)> = vec![];
@@ -55,8 +72,10 @@ pub mod qasm_parser {
                         .chars()
                         .filter(|&c| c.is_numeric() || c == ' ')
                         .collect();
-                    let filtered_line: Vec<String> =
-                        filtered_line.split(' ').map(|s| s.to_owned()).collect();
+                    let filtered_line: Vec<String> = filtered_line
+                        .split(' ')
+                        .map(std::borrow::ToOwned::to_owned)
+                        .collect();
                     match filtered_line[1].parse::<u32>() {
                         Ok(x) => vec![x],
                         Err(_) => return Err("Failed to parse the target qubit!".to_owned()),
@@ -76,10 +95,10 @@ pub mod qasm_parser {
                 "y" => 1,
                 "z" => 2,
                 "h" => 3,
-                other => return Err(format!("Operation Code {} not recognized!", other)),
+                other => return Err(format!("Operation Code {other} not recognized!")),
             };
 
-            parsed_instructions.push((operation, target_qubits))
+            parsed_instructions.push((operation, target_qubits));
         }
 
         Ok(ParsedInstruct {
@@ -101,19 +120,19 @@ impl fmt::Debug for QubitLayer {
         for index_main in 0..self.main.len() {
             output += &format!("state {:b} -> {1}\n", index_main, self.main[index_main]);
         }
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }
 
 impl fmt::Display for QubitLayer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut output = String::from("");
+        let mut output = String::new();
         for state in &self.main {
-            let str = format!("{} {}", output, state);
+            let str = format!("{output} {state}");
             output = str;
         }
         output.remove(0);
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }
 
@@ -125,34 +144,40 @@ impl QubitLayer {
     /// # Examples
     /// ```
     /// let mut q_layer = quantum_layer::QubitLayer::new(2);
-    /// let instructions = vec![(0, 0), (3, 1)];
+    /// let instructions = vec![(quantum_layer::QuantumOp::PauliX, 0), (quantum_layer::QuantumOp::PauliX, 1)];
     /// q_layer.execute(instructions);
     ///
-    /// let mut q_layer_2 = quantum_layer::QubitLayer::new(2);
-    /// q_layer_2.pauli_x(0);
-    /// q_layer_2.hadamard(1);
-    /// assert_eq!(q_layer, q_layer_2);
+    /// // qubits 0 and 1 must be 1.0
+    /// assert_eq!(q_layer.measure_qubits()[0], 1.0);
+    /// assert_eq!(q_layer.measure_qubits()[1], 1.0);
     /// ```
     ///
     /// # Errors
     /// Will return error if receives an unmapped operation integer
-    pub fn execute(&mut self, instructions: Vec<(u8, u32)>) -> Result<(), String> {
+    pub fn execute(&mut self, instructions: QuantumInstructions) -> Result<(), String> {
         for (op, target_qubit) in instructions {
+            if target_qubit >= self.get_num_qubits() {
+                return Err(format!(
+                    "Target qubit {target_qubit:?} is out of range. Size of layer is {}",
+                    self.get_num_qubits()
+                )
+                .to_owned());
+            }
             match Some(op) {
-                Some(0) => {
+                Some(QuantumOp::PauliX) => {
                     self.pauli_x(target_qubit);
                 }
-                Some(1) => {
+                Some(QuantumOp::PauliY) => {
                     self.pauli_y(target_qubit);
                 }
-                Some(2) => {
+                Some(QuantumOp::PauliZ) => {
                     self.pauli_z(target_qubit);
                 }
-                Some(3) => {
+                Some(QuantumOp::Hadamard) => {
                     self.hadamard(target_qubit);
                 }
-                other => {
-                    return Err(format!("Unrecognized Operation {other:?}").to_owned());
+                _ => {
+                    return Err("Unsupported Operation".to_owned());
                 }
             }
         }
@@ -164,12 +189,8 @@ impl QubitLayer {
         self.main.len().ilog2()
     }
 
-    #[must_use]
-    pub fn get_size_of(&self) -> usize {
-        self.main.len()
-    }
-
-    pub fn hadamard_par(&mut self, target_qubit: u32) {
+    #[allow(dead_code)]
+    fn hadamard_par(&mut self, target_qubit: u32) {
         let hadamard_const = 1.0 / std::f64::consts::SQRT_2;
         let parity_mutex = Mutex::new(&mut self.parity);
 
@@ -199,7 +220,55 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    pub fn hadamard(&mut self, target_qubit: u32) {
+    #[allow(dead_code)]
+    fn pauli_z_par(&mut self, target_qubit: u32) {
+        let parity_mutex = Mutex::new(&mut self.parity);
+        self.main.par_iter().enumerate().for_each(|(state, value)| {
+            if *value != Complex::new(0.0, 0.0) {
+                if state & Self::mask(target_qubit.try_into().unwrap()) != 0 {
+                    parity_mutex.lock().unwrap()[state] = -*value;
+                } else {
+                    parity_mutex.lock().unwrap()[state] = *value;
+                }
+            }
+        });
+
+        self.reset_parity_layer();
+    }
+
+    #[allow(dead_code)]
+    fn pauli_y_par(&mut self, target_qubit: u32) {
+        let parity_mutex = Mutex::new(&mut self.parity);
+        self.main.par_iter().enumerate().for_each(|(state, value)| {
+            if *value != Complex::new(0.0, 0.0) {
+                let target_state: usize = state ^ Self::mask(target_qubit.try_into().unwrap());
+                if target_state & Self::mask(target_qubit.try_into().unwrap()) != 0 {
+                    parity_mutex.lock().unwrap()[target_state] = *value * Complex::new(0.0, 1.0);
+                } else {
+                    parity_mutex.lock().unwrap()[target_state] = *value * Complex::new(0.0, -1.0);
+                }
+            }
+        });
+
+        self.reset_parity_layer();
+    }
+
+    #[allow(dead_code)]
+    fn pauli_x_par(&mut self, target_qubit: u32) {
+        let parity_mutex = Mutex::new(&mut self.parity);
+        self.main.par_iter().enumerate().for_each(|(state, value)| {
+            if *value != Complex::new(0.0, 0.0) {
+                let mut target_state: usize = state;
+                target_state ^= Self::mask(target_qubit.try_into().unwrap()); // flip bit 0
+                parity_mutex.lock().unwrap()[target_state] = *value;
+            }
+        });
+
+        self.reset_parity_layer();
+    }
+
+    #[allow(dead_code)]
+    fn hadamard(&mut self, target_qubit: u32) {
         let hadamard_const = 1.0 / std::f64::consts::SQRT_2;
         for state in 0..self.main.len() {
             if self.main[state] != Complex::new(0.0, 0.0) {
@@ -219,7 +288,21 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    pub fn pauli_y(&mut self, target_qubit: u32) {
+    fn pauli_z(&mut self, target_qubit: u32) {
+        for state in 0..self.main.len() {
+            if self.main[state] != Complex::new(0.0, 0.0) {
+                if state & Self::mask(target_qubit.try_into().unwrap()) != 0 {
+                    self.parity[state] = -self.main[state];
+                } else {
+                    self.parity[state] = self.main[state];
+                }
+            }
+        }
+
+        self.reset_parity_layer();
+    }
+
+    fn pauli_y(&mut self, target_qubit: u32) {
         for state in 0..self.main.len() {
             if self.main[state] != Complex::new(0.0, 0.0) {
                 let target_state: usize = state ^ Self::mask(target_qubit.try_into().unwrap());
@@ -236,52 +319,7 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    pub fn pauli_y_par(&mut self, target_qubit: u32) {
-        let parity_mutex = Mutex::new(&mut self.parity);
-        self.main.par_iter().enumerate().for_each(|(state, value)| {
-            if *value != Complex::new(0.0, 0.0) {
-                let target_state: usize = state ^ Self::mask(target_qubit.try_into().unwrap());
-                if target_state & Self::mask(target_qubit.try_into().unwrap()) != 0 {
-                    parity_mutex.lock().unwrap()[target_state] = *value * Complex::new(0.0, 1.0);
-                } else {
-                    parity_mutex.lock().unwrap()[target_state] = *value * Complex::new(0.0, -1.0);
-                }
-            }
-        });
-
-        self.reset_parity_layer();
-    }
-
-    pub fn pauli_z(&mut self, target_qubit: u32) {
-        for state in 0..self.main.len() {
-            if self.main[state] != Complex::new(0.0, 0.0) {
-                if state & Self::mask(target_qubit.try_into().unwrap()) != 0 {
-                    self.parity[state] = -self.main[state];
-                } else {
-                    self.parity[state] = self.main[state];
-                }
-            }
-        }
-
-        self.reset_parity_layer();
-    }
-
-    pub fn pauli_z_par(&mut self, target_qubit: u32) {
-        let parity_mutex = Mutex::new(&mut self.parity);
-        self.main.par_iter().enumerate().for_each(|(state, value)| {
-            if *value != Complex::new(0.0, 0.0) {
-                if state & Self::mask(target_qubit.try_into().unwrap()) != 0 {
-                    parity_mutex.lock().unwrap()[state] = -*value;
-                } else {
-                    parity_mutex.lock().unwrap()[state] = *value;
-                }
-            }
-        });
-
-        self.reset_parity_layer();
-    }
-
-    pub fn pauli_x(&mut self, target_qubit: u32) {
+    fn pauli_x(&mut self, target_qubit: u32) {
         for state in 0..self.main.len() {
             if self.main[state] != Complex::new(0.0, 0.0) {
                 let mut target_state: usize = state;
@@ -289,19 +327,6 @@ impl QubitLayer {
                 self.parity[target_state] = self.main[state];
             }
         }
-
-        self.reset_parity_layer();
-    }
-
-    pub fn pauli_x_par(&mut self, target_qubit: u32) {
-        let parity_mutex = Mutex::new(&mut self.parity);
-        self.main.par_iter().enumerate().for_each(|(state, value)| {
-            if *value != Complex::new(0.0, 0.0) {
-                let mut target_state: usize = state;
-                target_state ^= Self::mask(target_qubit.try_into().unwrap()); // flip bit 0
-                parity_mutex.lock().unwrap()[target_state] = *value;
-            }
-        });
 
         self.reset_parity_layer();
     }
@@ -318,9 +343,12 @@ impl QubitLayer {
             .count();
     }
 
+    ///
+    ///
+    #[must_use]
     pub fn measure_qubits(&self) -> MeasuredQubits {
         let num_qubits = self.get_num_qubits();
-        let mut measured_qubits: Vec<f64> = vec![0.0; num_qubits.try_into().unwrap()];
+        let mut measured_qubits: Vec<f64> = vec![0.0; num_qubits as usize];
 
         for index_main in 0..self.main.len() {
             if self.main[index_main] == Complex::new(0.0, 0.0) {
@@ -334,75 +362,28 @@ impl QubitLayer {
                 }
             }
         }
-        MeasuredQubits::new(measured_qubits)
+        measured_qubits
     }
 
     fn mask(position: usize) -> usize {
         0x1usize << position
     }
 
+    #[must_use]
     pub fn new(num_qubits: u32) -> Self {
-        let mut _main = vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)];
-        _main[0] = Complex::new(1.0, 0.0);
+        let mut main = vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)];
+        main[0] = Complex::new(1.0, 0.0);
 
         Self {
-            main: _main,
+            main,
             parity: vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)],
         }
-    }
-}
-
-#[derive(PartialEq)]
-pub struct MeasuredQubits {
-    results: Vec<f64>,
-}
-
-impl MeasuredQubits {
-    pub fn new(results: Vec<f64>) -> Self {
-        MeasuredQubits { results }
-    }
-}
-
-impl fmt::Display for MeasuredQubits {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut output = String::new();
-        for index_measured_qubits in 0..self.results.len() {
-            output += &format!(
-                "Qubit {0} -> {1}\n",
-                index_measured_qubits + 1,
-                self.results[index_measured_qubits]
-            );
-        }
-        write!(f, "{}", output)
-    }
-}
-
-impl fmt::Debug for MeasuredQubits {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut output = String::new();
-        for index_measured_qubits in 0..self.results.len() {
-            output += &format!(
-                "Qubit {0} -> {1}\n",
-                index_measured_qubits + 1,
-                self.results[index_measured_qubits]
-            );
-        }
-        write!(f, "{}", output)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_measured_display_trait_print() {
-        let q_layer: QubitLayer = QubitLayer::new(2);
-        let results = q_layer.measure_qubits();
-        let expected = "Qubit 1 -> 0\nQubit 2 -> 0\n";
-        println!("{}", results);
-        assert_eq!(expected, format!("{}", results));
-    }
 
     #[test]
     fn test_display_trait_print() {
