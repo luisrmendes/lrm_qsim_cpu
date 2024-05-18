@@ -21,12 +21,17 @@ type TargetQubit = u32;
 type QuantumInstructions = Vec<(QuantumOp, TargetQubit)>;
 type MeasuredQubits = Vec<f64>;
 
+/// Quantum Assembly parser module
 pub mod qasm_parser {
+    use crate::QuantumOp;
+    use crate::TargetQubit;
+
     pub struct ParsedInstruct {
         pub num_qubits: u32,
-        pub ops: Vec<(u8, Vec<u32>)>,
+        pub ops: Vec<(QuantumOp, TargetQubit)>,
     }
 
+    /// Parses the contents of a qasm file
     ///
     /// # Errors
     /// Returns error if encounters semantic errors in the qasm file contents
@@ -57,7 +62,7 @@ pub mod qasm_parser {
         lines.drain(0..=remove_delim);
 
         // Filter each newline
-        let mut parsed_instructions: Vec<(u8, Vec<u32>)> = vec![];
+        let mut parsed_instructions: Vec<(QuantumOp, TargetQubit)> = vec![];
         for line in &lines {
             let operation: &str = match line.split_whitespace().next() {
                 Some(operation) => operation,
@@ -65,7 +70,7 @@ pub mod qasm_parser {
             };
 
             // parse qubit target list
-            let target_qubits: Vec<u32> = match operation {
+            let target_qubits: TargetQubit = match operation {
                 // fetch the only target qubit after the op string
                 "x" | "y" | "z" | "h" => {
                     let filtered_line: String = line
@@ -76,8 +81,8 @@ pub mod qasm_parser {
                         .split(' ')
                         .map(std::borrow::ToOwned::to_owned)
                         .collect();
-                    match filtered_line[1].parse::<u32>() {
-                        Ok(x) => vec![x],
+                    match filtered_line[1].parse::<TargetQubit>() {
+                        Ok(x) => x,
                         Err(_) => return Err("Failed to parse the target qubit!".to_owned()),
                     }
                 }
@@ -90,11 +95,11 @@ pub mod qasm_parser {
             };
 
             // parse operation codes
-            let operation: u8 = match operation {
-                "x" => 0,
-                "y" => 1,
-                "z" => 2,
-                "h" => 3,
+            let operation: QuantumOp = match operation {
+                "x" => QuantumOp::PauliX,
+                "y" => QuantumOp::PauliY,
+                "z" => QuantumOp::PauliZ,
+                "h" => QuantumOp::Hadamard,
                 other => return Err(format!("Operation Code {other} not recognized!")),
             };
 
@@ -138,8 +143,7 @@ impl fmt::Display for QubitLayer {
 
 impl QubitLayer {
     /// Executes multiple quantum assembly instructions.
-    /// Instructions are in the pair format: the first value represents the operation and the second value the target qubit
-    /// Operations are mapped to ints (0 is `pauli_x`, 1 is `pauli_y`, 2 is `pauli_z`, 3 is `hadamard`)
+    /// Receives a vector containing pairs of (QuantumOp, TargetQubit)
     ///
     /// # Examples
     /// ```
@@ -153,7 +157,8 @@ impl QubitLayer {
     /// ```
     ///
     /// # Errors
-    /// Will return error if receives an unmapped operation integer
+    /// - If receives an unmapped operation integer
+    /// - Target qubit is out of range
     pub fn execute(&mut self, instructions: QuantumInstructions) -> Result<(), String> {
         for (op, target_qubit) in instructions {
             if target_qubit >= self.get_num_qubits() {
@@ -343,8 +348,8 @@ impl QubitLayer {
             .count();
     }
 
-    ///
-    ///
+    /// Returns the result of the values contained in the quantum layer.
+    /// This is equivalent to collapsing qubits to obtain its state
     #[must_use]
     pub fn measure_qubits(&self) -> MeasuredQubits {
         let num_qubits = self.get_num_qubits();
