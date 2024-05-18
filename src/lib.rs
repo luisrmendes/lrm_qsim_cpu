@@ -32,6 +32,7 @@ pub mod qasm_parser {
     }
 
     /// Parses the contents of a qasm file
+    /// Supporting a simple subset of `OpenQASM` 3.0 (<https://openqasm.com/versions/3.0/index.html>)
     ///
     /// # Errors
     /// Returns error if encounters semantic errors in the qasm file contents
@@ -143,7 +144,7 @@ impl fmt::Display for QubitLayer {
 
 impl QubitLayer {
     /// Executes multiple quantum assembly instructions.
-    /// Receives a vector containing pairs of (QuantumOp, TargetQubit)
+    /// Receives a vector containing pairs of (`QuantumOp`, `TargetQubit`)
     ///
     /// # Examples
     /// ```
@@ -272,7 +273,6 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    #[allow(dead_code)]
     fn hadamard(&mut self, target_qubit: u32) {
         let hadamard_const = 1.0 / std::f64::consts::SQRT_2;
         for state in 0..self.main.len() {
