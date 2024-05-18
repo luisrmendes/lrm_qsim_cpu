@@ -1,8 +1,8 @@
 use criterion::*;
-use q_layer::{self, QubitLayer};
+use quantum_layer::{self, QubitLayer};
 
-fn bench_full_hadamard_25() {
-    let num_qubits = 25;
+fn bench_full_hadamard_24() {
+    let num_qubits = 24;
     let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
     for it in 0..num_qubits - 1 {
         q_layer.hadamard(it);
@@ -10,8 +10,8 @@ fn bench_full_hadamard_25() {
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("bench_full_hadamard_25", |b| {
-        b.iter(|| bench_full_hadamard_25())
+    c.bench_function("bench_full_hadamard_24", |b| {
+        b.iter(|| bench_full_hadamard_24())
     });
 }
 
