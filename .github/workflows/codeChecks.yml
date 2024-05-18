@@ -15,7 +15,7 @@ jobs:
         with:
           components: rustfmt
       - name: Enforce formatting
-        run: cd web_server && cargo fmt --check
+        run: cargo fmt --check
 
   clippy:
     name: Clippy
@@ -28,7 +28,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Linting
-        run: cd web_server && cargo clippy -- -D warnings
+        run: cargo clippy -- -D warnings
   
   test:
     env: # Or as an environment variable
@@ -41,7 +41,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cd web_server && FRONTEND_PRODUCTION_URL=$FRONTEND_PRODUCTION_URL cargo test  
+        run: FRONTEND_PRODUCTION_URL=$FRONTEND_PRODUCTION_URL cargo test  
 
   # coverage:
   #   name: Code coverage
