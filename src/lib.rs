@@ -3,8 +3,11 @@
 //! Provides operations on the qubit layer, such as quantum operations
 //!     and print utilities.
 
+use std::sync::Mutex;
+
 use num::pow;
 use num::Complex;
+use rayon::iter::*;
 
 pub mod qasm_parser {
 
@@ -161,6 +164,42 @@ impl QubitLayer {
         }
         result.remove(0);
         result
+    }
+
+    pub fn hadamard2(&mut self, target_qubit: u32) {
+        let hadamard_const = 1.0 / std::f64::consts::SQRT_2;
+
+        // Create a Mutex to protect parity
+        let parity_mutex = Mutex::new(&mut self.parity);
+
+        // First parallel loop
+        self.main
+            .par_iter()
+            .enumerate()
+            .for_each(|(state, &main_value)| {
+                if main_value != Complex::new(0.0, 0.0) {
+                    let mut parity = parity_mutex.lock().unwrap();
+                    if state & Self::mask(target_qubit as usize) != 0 {
+                        parity[state] -= hadamard_const * main_value;
+                    } else {
+                        parity[state] += hadamard_const * main_value;
+                    }
+                }
+            });
+
+        // Second parallel loop
+        self.main
+            .par_iter()
+            .enumerate()
+            .for_each(|(state, &main_value)| {
+                if main_value != Complex::new(0.0, 0.0) {
+                    let target_state: usize = state ^ Self::mask(target_qubit as usize);
+                    let mut parity = parity_mutex.lock().unwrap();
+                    parity[target_state] += hadamard_const * main_value;
+                }
+            });
+
+        self.reset_parity_layer();
     }
 
     pub fn hadamard(&mut self, target_qubit: u32) {
