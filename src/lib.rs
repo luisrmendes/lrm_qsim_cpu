@@ -226,7 +226,8 @@ impl QubitLayer {
 
     fn reset_parity_layer(&mut self) {
         // clone parity qubit layer to qubit layer
-        self.main = self.parity.clone();
+        // self.main = self.parity.clone();
+        self.main.clone_from(&self.parity);
 
         // reset parity qubit layer with 0
         self.parity
