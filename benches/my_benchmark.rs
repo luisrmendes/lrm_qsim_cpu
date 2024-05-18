@@ -1,6 +1,38 @@
 use criterion::*;
 use quantum_layer::{self, QubitLayer};
 
+fn bench_full_hadamard_par_24() {
+    let num_qubits = 24;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.hadamard_par(it);
+    }
+}
+
+fn bench_full_pauli_z_par_25() {
+    let num_qubits = 25;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.pauli_z_par(it);
+    }
+}
+
+fn bench_full_pauli_y_par_25() {
+    let num_qubits = 25;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.pauli_y_par(it);
+    }
+}
+
+fn bench_full_pauli_x_par_25() {
+    let num_qubits = 25;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.pauli_x_par(it);
+    }
+}
+
 fn bench_full_hadamard_24() {
     let num_qubits = 24;
     let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
@@ -9,9 +41,54 @@ fn bench_full_hadamard_24() {
     }
 }
 
+fn bench_full_pauli_z_25() {
+    let num_qubits = 25;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.pauli_z(it);
+    }
+}
+
+fn bench_full_pauli_y_25() {
+    let num_qubits = 25;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.pauli_y(it);
+    }
+}
+
+fn bench_full_pauli_x_25() {
+    let num_qubits = 25;
+    let mut q_layer: QubitLayer = QubitLayer::new(num_qubits);
+    for it in 0..num_qubits - 1 {
+        q_layer.pauli_x(it);
+    }
+}
+
 pub fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("bench_full_pauli_z_25", |b| {
+        b.iter(|| bench_full_pauli_z_25())
+    });
+    c.bench_function("bench_full_pauli_z_par_25", |b| {
+        b.iter(|| bench_full_pauli_z_par_25())
+    });
+    c.bench_function("bench_full_pauli_x_25", |b| {
+        b.iter(|| bench_full_pauli_x_25())
+    });
+    c.bench_function("bench_full_pauli_x_par_25", |b| {
+        b.iter(|| bench_full_pauli_x_par_25())
+    });
+    c.bench_function("bench_full_pauli_y_25", |b| {
+        b.iter(|| bench_full_pauli_y_25())
+    });
+    c.bench_function("bench_full_pauli_y_par_25", |b| {
+        b.iter(|| bench_full_pauli_y_par_25())
+    });
     c.bench_function("bench_full_hadamard_24", |b| {
         b.iter(|| bench_full_hadamard_24())
+    });
+    c.bench_function("bench_full_hadamard_par_24", |b| {
+        b.iter(|| bench_full_hadamard_par_24())
     });
 }
 
