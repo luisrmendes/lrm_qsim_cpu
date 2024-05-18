@@ -145,46 +145,8 @@ impl QubitLayer {
         self.main.len().ilog2()
     }
 
-    /// Returns a string of ordered qubit results separated by space
-    pub fn get_qubit_results(measured_qubits: Vec<f64>) -> String {
-        let mut results = String::new();
-
-        if let Some(measured_qubit) = measured_qubits.first() {
-            results += &(measured_qubit.to_string());
-        }
-        let mut measured_qubits_iter = measured_qubits.iter();
-        measured_qubits_iter.next();
-        for measured_qubit in measured_qubits_iter {
-            results += " ";
-            results += &measured_qubit.to_string();
-        }
-        results
-    }
-
-    pub fn convert_qlayer_to_pretty_string(&self) -> String {
-        let mut result = String::from("");
-        for index_main in 0..self.main.len() {
-            let str = format!(
-                "{}\nstate {:b} -> {}",
-                result, index_main, self.main[index_main]
-            );
-            result = str;
-        }
-        result
-    }
-
     pub fn get_size_of(&self) -> usize {
         self.main.len()
-    }
-
-    pub fn convert_qlayer_to_string(&self) -> String {
-        let mut result = String::from("");
-        for state in &self.main {
-            let str = format!("{} {}", result, state);
-            result = str;
-        }
-        result.remove(0);
-        result
     }
 
     pub fn hadamard_par(&mut self, target_qubit: u32) {
@@ -336,12 +298,6 @@ impl QubitLayer {
             .count();
     }
 
-    pub fn print_qubit_layer(&self) {
-        for index_main in 0..self.main.len() {
-            println!("state {:b} -> {1}", index_main, self.main[index_main]);
-        }
-    }
-
     pub fn measure_qubits(&self) -> MeasuredQubits {
         let num_qubits = self.get_num_qubits();
         let mut measured_qubits: Vec<f64> = vec![0.0; num_qubits.try_into().unwrap()];
@@ -406,23 +362,27 @@ mod tests {
 
     #[test]
     fn test_measured_display_trait_print() {
-        let num_qubits = 3;
-        let q_layer: QubitLayer = QubitLayer::new(num_qubits);
-        println!("{}", q_layer.measure_qubits())
+        let q_layer: QubitLayer = QubitLayer::new(2);
+        let results = q_layer.measure_qubits();
+        let expected = "Qubit 1 -> 0\nQubit 2 -> 0\n";
+        println!("{}", results);
+        assert_eq!(expected, format!("{}", results));
     }
 
     #[test]
     fn test_display_trait_print() {
-        let num_qubits = 3;
-        let q_layer: QubitLayer = QubitLayer::new(num_qubits);
-        println!("{}", q_layer)
+        let q_layer: QubitLayer = QubitLayer::new(2);
+        let expected = "1+0i 0+0i 0+0i 0+0i";
+        println!("{}", q_layer);
+        assert_eq!(expected, format!("{}", q_layer));
     }
 
     #[test]
     fn test_debug_trait_print() {
-        let num_qubits = 3;
-        let q_layer: QubitLayer = QubitLayer::new(num_qubits);
-        println!("{:?}", q_layer)
+        let q_layer: QubitLayer = QubitLayer::new(2);
+        let expected = "state 0 -> 1+0i\nstate 1 -> 0+0i\nstate 10 -> 0+0i\nstate 11 -> 0+0i\n";
+        println!("{:?}", q_layer);
+        assert_eq!(expected, format!("{:?}", q_layer));
     }
 
     #[test]
