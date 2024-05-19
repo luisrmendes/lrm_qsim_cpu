@@ -7,7 +7,7 @@ use num::pow;
 use num::Complex;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::de;
-use serde::de::{Visitor, VariantAccess};
+use serde::de::{VariantAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::sync::Mutex;
