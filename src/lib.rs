@@ -6,8 +6,9 @@
 use num::pow;
 use num::Complex;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use serde::Serialize;
-use serde::Serializer;
+use serde::de;
+use serde::de::{Visitor, VariantAccess};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::sync::Mutex;
 
@@ -40,6 +41,114 @@ impl Serialize for QuantumOp {
                 serializer.serialize_unit_variant("QuantumOp", 1, "HadamardPar")
             }
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for QuantumOp {
+    fn deserialize<D>(deserializer: D) -> Result<QuantumOp, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        pub enum Field {
+            PauliX,
+            PauliY,
+            PauliZ,
+            Hadamard,
+            PauliXPar,
+            PauliYPar,
+            PauliZPar,
+            HadamardPar,
+        }
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`PauliX`, `PauliY`, `PauliZ`, `Hadamard`, `PauliXPar`, `PauliYPar`, `PauliZPar`, `HadamardPar`")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "PauliX" => Ok(Field::PauliX),
+                            "PauliY" => Ok(Field::PauliY),
+                            "PauliZ" => Ok(Field::PauliZ),
+                            "Hadamard" => Ok(Field::Hadamard),
+                            "PauliXPar" => Ok(Field::PauliXPar),
+                            "PauliYPar" => Ok(Field::PauliYPar),
+                            "PauliZPar" => Ok(Field::PauliZPar),
+                            "HadamardPar" => Ok(Field::HadamardPar),
+
+                            _ => Err(de::Error::unknown_variant(
+                                value,
+                                &[
+                                    "PauliX",
+                                    "PauliY",
+                                    "PauliZ",
+                                    "Hadamard",
+                                    "PauliXPar",
+                                    "PauliYPar",
+                                    "PauliZPar",
+                                    "HadamardPar",
+                                ],
+                            )),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct MyEnumVisitor;
+
+        impl<'de> Visitor<'de> for MyEnumVisitor {
+            type Value = QuantumOp;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct QuantumOp")
+            }
+
+            fn visit_enum<A>(self, data: A) -> Result<QuantumOp, A::Error>
+            where
+                A: de::EnumAccess<'de>,
+            {
+                let (field, variant) = data.variant::<Field>()?;
+                match field {
+                    Field::PauliX => variant.unit_variant().map(|()| QuantumOp::PauliX),
+                    Field::PauliY => variant.unit_variant().map(|()| QuantumOp::PauliY),
+                    Field::PauliZ => variant.unit_variant().map(|()| QuantumOp::PauliX),
+                    Field::Hadamard => variant.unit_variant().map(|()| QuantumOp::Hadamard),
+                    Field::PauliXPar => variant.unit_variant().map(|()| QuantumOp::PauliXPar),
+                    Field::PauliYPar => variant.unit_variant().map(|()| QuantumOp::PauliYPar),
+                    Field::PauliZPar => variant.unit_variant().map(|()| QuantumOp::PauliZPar),
+                    Field::HadamardPar => variant.unit_variant().map(|()| QuantumOp::HadamardPar),
+                }
+            }
+        }
+
+        deserializer.deserialize_enum(
+            "QuantumOp",
+            &[
+                "PauliX",
+                "PauliY",
+                "PauliZ",
+                "Hadamard",
+                "PauliXPar",
+                "PauliYPar",
+                "PauliZPar",
+                "HadamardPar",
+            ],
+            MyEnumVisitor,
+        )
     }
 }
 
