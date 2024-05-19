@@ -342,7 +342,6 @@ impl QubitLayer {
         self.main.len().ilog2()
     }
 
-    #[allow(dead_code)]
     fn hadamard_par(&mut self, target_qubit: u32) {
         let hadamard_const = 1.0 / std::f64::consts::SQRT_2;
         let parity_mutex = Mutex::new(&mut self.parity);
@@ -373,7 +372,6 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    #[allow(dead_code)]
     fn pauli_z_par(&mut self, target_qubit: u32) {
         let parity_mutex = Mutex::new(&mut self.parity);
         self.main.par_iter().enumerate().for_each(|(state, value)| {
@@ -389,7 +387,6 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    #[allow(dead_code)]
     fn pauli_y_par(&mut self, target_qubit: u32) {
         let parity_mutex = Mutex::new(&mut self.parity);
         self.main.par_iter().enumerate().for_each(|(state, value)| {
@@ -406,7 +403,6 @@ impl QubitLayer {
         self.reset_parity_layer();
     }
 
-    #[allow(dead_code)]
     fn pauli_x_par(&mut self, target_qubit: u32) {
         let parity_mutex = Mutex::new(&mut self.parity);
         self.main.par_iter().enumerate().for_each(|(state, value)| {
