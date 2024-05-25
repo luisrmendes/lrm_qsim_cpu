@@ -1,7 +1,34 @@
-//! Quantum Layer abstraction
+//! Quantum circuit simulator
 //!
-//! Provides operations on the qubit layer, such as quantum operations
-//!     and print utilities.
+//! Provides an abstraction for quantum circuit simulations.  
+//! Uses the state vector simulation method.  
+//! Memory consumption is 2 * 8 * 2<sup>num_qubits</sup> bytes. For example, simulating 25 qubits cost ~537 MB.  
+//!
+//! # Example
+//!
+//! ```
+//! use quantum_state_sim::{QubitLayer, QuantumOp};
+//!
+//! let mut q_layer: QubitLayer = QubitLayer::new(20);
+//!
+//! let instructions = vec![
+//!     (QuantumOp::PauliX, 0),
+//!     (QuantumOp::PauliY, 1),
+//!     (QuantumOp::PauliZ, 2),
+//!     (QuantumOp::Hadamard, 3),
+//! ];
+//!
+//! if let Err(e) = q_layer.execute(instructions) {
+//!     panic!("Failed to execute instructions! Error: {e}");
+//! }
+//!
+//! let measured_qubits = q_layer.measure_qubits();
+//! println!("{:?}", measured_qubits);
+//!
+//! // Check if the first qubit has flipped to 1 due to the Pauli X operation
+//! assert_eq!(1.0, measured_qubits[0].round()); // measures might come with floating-point precision loss
+//!
+//! ```
 
 use num::pow;
 use num::Complex;
@@ -12,6 +39,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::sync::Mutex;
 
+/// Supported quantum operations, equivalent to quantum gates in a circuit  
+/// Operations with 'Par' suffix are experimental multi-threaded implementations, not guaranteed to improve performance
 #[derive(Clone, PartialEq, Debug)]
 pub enum QuantumOp {
     PauliX,
@@ -153,10 +182,10 @@ impl<'de> Deserialize<'de> for QuantumOp {
 }
 
 pub type TargetQubit = u32;
-pub type QuantumInstructions = Vec<(QuantumOp, TargetQubit)>;
 pub type MeasuredQubits = Vec<f64>;
 
-/// Quantum Assembly parser module
+/// Quantum Assembly parser module  
+/// Supports a simple subset of `OpenQASM` 3.0 (<https://openqasm.com/versions/3.0/index.html>)
 pub mod qasm_parser {
     use crate::QuantumOp;
     use crate::TargetQubit;
@@ -167,7 +196,6 @@ pub mod qasm_parser {
     }
 
     /// Parses the contents of a qasm file
-    /// Supporting a simple subset of `OpenQASM` 3.0 (<https://openqasm.com/versions/3.0/index.html>)
     ///
     /// # Errors
     /// Returns error if encounters semantic errors in the qasm file contents
@@ -249,6 +277,7 @@ pub mod qasm_parser {
     }
 }
 
+/// The main abstraction of quantum circuit simulation. Contains the complex values of each possible state.
 #[derive(Clone, PartialEq)]
 pub struct QubitLayer {
     main: Vec<Complex<f64>>,
@@ -283,8 +312,10 @@ impl QubitLayer {
     ///
     /// # Examples
     /// ```
-    /// let mut q_layer = quantum_state_sim::QubitLayer::new(2);
-    /// let instructions = vec![(quantum_state_sim::QuantumOp::PauliX, 0), (quantum_state_sim::QuantumOp::PauliX, 1)];
+    /// use quantum_state_sim::{QubitLayer, QuantumOp};
+    ///
+    /// let mut q_layer = QubitLayer::new(2);
+    /// let instructions = vec![(QuantumOp::PauliX, 0), (QuantumOp::PauliX, 1)];
     /// q_layer.execute(instructions);
     ///
     /// // qubits 0 and 1 must be 1.0
@@ -293,10 +324,12 @@ impl QubitLayer {
     /// ```
     ///
     /// # Errors
-    /// - If receives an unmapped operation integer
-    /// - Target qubit is out of range
-    pub fn execute(&mut self, instructions: QuantumInstructions) -> Result<(), String> {
-        for (op, target_qubit) in instructions {
+    /// If operation target qubit is out of range.
+    pub fn execute(
+        &mut self,
+        quantum_instructions: Vec<(QuantumOp, TargetQubit)>,
+    ) -> Result<(), String> {
+        for (op, target_qubit) in quantum_instructions {
             if target_qubit >= self.get_num_qubits() {
                 return Err(format!(
                     "Target qubit {target_qubit:?} is out of range. Size of layer is {}",
@@ -337,9 +370,66 @@ impl QubitLayer {
         Ok(())
     }
 
+    /// Returns the number of qubits represented in the `QubitLayer`.  
+    /// ```
+    /// use quantum_state_sim::QubitLayer;
+    ///
+    /// let num_qubits = 20;
+    /// let q_layer = QubitLayer::new(num_qubits);
+    /// assert_eq!(num_qubits, 20);
+    /// ```
     #[must_use]
     pub fn get_num_qubits(&self) -> u32 {
         self.main.len().ilog2()
+    }
+
+    /// Returns the results of the operations performed in the `QubitLayer`.  
+    /// Equivalent to collapsing qubits to obtain its state.
+    /// # Examples
+    /// ```
+    /// use quantum_state_sim::{QubitLayer, QuantumOp};
+    ///
+    /// let mut q_layer = QubitLayer::new(20);
+    /// q_layer.execute(vec![(QuantumOp::Hadamard, 0)]);
+    /// println!("{:?}", q_layer.measure_qubits());
+    ///
+    /// ```
+    #[must_use]
+    pub fn measure_qubits(&self) -> MeasuredQubits {
+        let num_qubits = self.get_num_qubits();
+        let mut measured_qubits: Vec<f64> = vec![0.0; num_qubits as usize];
+
+        for index_main in 0..self.main.len() {
+            if self.main[index_main] == Complex::new(0.0, 0.0) {
+                continue;
+            }
+            for (index_measured_qubits, value) in measured_qubits.iter_mut().enumerate() {
+                // check if the state has a bit in common with the measured_qubit index
+                // does not matter which it is, thats why >= 1
+                if (index_main & Self::mask(index_measured_qubits)) > 0 {
+                    *value += pow(self.main[index_main].norm(), 2);
+                }
+            }
+        }
+        measured_qubits
+    }
+
+    /// Creates a new `QubitLayer` representing `num_qubits` qubits.  
+    /// # Examples
+    /// ```
+    /// use quantum_state_sim::QubitLayer;
+    ///
+    /// let q_layer = QubitLayer::new(20);
+    /// ```
+    #[must_use]
+    pub fn new(num_qubits: u32) -> Self {
+        let mut main = vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)];
+        main[0] = Complex::new(1.0, 0.0);
+
+        Self {
+            main,
+            parity: vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)],
+        }
     }
 
     fn hadamard_par(&mut self, target_qubit: u32) {
@@ -491,47 +581,21 @@ impl QubitLayer {
             .count();
     }
 
-    /// Returns the result of the values contained in the quantum layer.
-    /// This is equivalent to collapsing qubits to obtain its state
-    #[must_use]
-    pub fn measure_qubits(&self) -> MeasuredQubits {
-        let num_qubits = self.get_num_qubits();
-        let mut measured_qubits: Vec<f64> = vec![0.0; num_qubits as usize];
-
-        for index_main in 0..self.main.len() {
-            if self.main[index_main] == Complex::new(0.0, 0.0) {
-                continue;
-            }
-            for (index_measured_qubits, value) in measured_qubits.iter_mut().enumerate() {
-                // check if the state has a bit in common with the measured_qubit index
-                // does not matter which it is, thats why >= 1
-                if (index_main & Self::mask(index_measured_qubits)) > 0 {
-                    *value += pow(self.main[index_main].norm(), 2);
-                }
-            }
-        }
-        measured_qubits
-    }
-
     fn mask(position: usize) -> usize {
         0x1usize << position
-    }
-
-    #[must_use]
-    pub fn new(num_qubits: u32) -> Self {
-        let mut main = vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)];
-        main[0] = Complex::new(1.0, 0.0);
-
-        Self {
-            main,
-            parity: vec![Complex::new(0.0, 0.0); 2_usize.pow(num_qubits)],
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_get_num_qubits() {
+        let num_qubits = 10;
+        let q_layer: QubitLayer = QubitLayer::new(num_qubits);
+        assert_eq!(num_qubits, q_layer.get_num_qubits());
+    }
 
     #[test]
     fn test_display_trait_print() {
