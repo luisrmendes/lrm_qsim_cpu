@@ -2,6 +2,14 @@
 name = "quantum_state_sim"
 version = "0.1.0"
 edition = "2021"
+authors = ["lrm <lrmmendes98@gmail.com>"]
+rust-version = "1.56"
+description = "A quantum circuit simulator"
+readme = "README.md"
+homepage = "https://github.com/luisrmendes/quantum_state_sim"
+repository = "https://github.com/luisrmendes/quantum_state_sim"
+license = "MIT OR Apache-2.0"
+keywords = ["quantum", "simulator"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
