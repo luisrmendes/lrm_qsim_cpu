@@ -589,6 +589,69 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_measure_qubits() {
+        let mut q_layer: QubitLayer = QubitLayer::new(3);
+        for it in 0..q_layer.get_num_qubits() {
+            assert_eq!(0.0, q_layer.measure_qubits()[it as usize]);
+        }
+
+        let _ = q_layer.execute(vec![]);
+
+        for it in 0..q_layer.get_num_qubits() {
+            assert_eq!(0.0, q_layer.measure_qubits()[it as usize]);
+        }
+    }
+
+    #[test]
+    fn test_random_executions() {
+        let mut q_layer: QubitLayer = QubitLayer::new(3);
+        let instructions = vec![
+            (QuantumOp::Hadamard, 0),
+            (QuantumOp::Hadamard, 1),
+            (QuantumOp::Hadamard, 2),
+            (QuantumOp::Hadamard, 0),
+            (QuantumOp::Hadamard, 1),
+            (QuantumOp::Hadamard, 2),
+            (QuantumOp::HadamardPar, 0),
+            (QuantumOp::HadamardPar, 1),
+            (QuantumOp::HadamardPar, 2),
+            (QuantumOp::HadamardPar, 0),
+            (QuantumOp::HadamardPar, 1),
+            (QuantumOp::HadamardPar, 2),
+        ];
+        let _ = q_layer.execute(instructions);
+        for it in 0..q_layer.get_num_qubits() {
+            assert_eq!(
+                0.0,
+                (q_layer.measure_qubits()[it as usize] * 10.0).round() / 10.0
+            );
+        }
+    }
+
+    #[test]
+    fn test_spins_on_superposition() {
+        let mut q_layer: QubitLayer = QubitLayer::new(3);
+        let instructions = vec![
+            (QuantumOp::Hadamard, 0),
+            (QuantumOp::Hadamard, 1),
+            (QuantumOp::Hadamard, 2),
+            (QuantumOp::PauliX, 0),
+            (QuantumOp::PauliY, 1),
+            (QuantumOp::PauliZ, 2),
+            (QuantumOp::PauliXPar, 0),
+            (QuantumOp::PauliYPar, 1),
+            (QuantumOp::PauliZPar, 2),
+        ];
+        let _ = q_layer.execute(instructions);
+        for it in 0..q_layer.get_num_qubits() {
+            assert_eq!(
+                0.5,
+                (q_layer.measure_qubits()[it as usize] * 10.0).round() / 10.0
+            );
+        }
+    }
+
+    #[test]
     fn test_failed_execute() {
         let mut q_layer: QubitLayer = QubitLayer::new(10);
         let instructions = vec![(QuantumOp::PauliX, 10)]; // index goes up to 9
@@ -642,29 +705,6 @@ mod tests {
         let expected = "state 0 -> 1+0i\nstate 1 -> 0+0i\nstate 10 -> 0+0i\nstate 11 -> 0+0i\n";
         println!("{:?}", q_layer);
         assert_eq!(expected, format!("{:?}", q_layer));
-    }
-
-    #[test]
-    fn test_spins_on_superposition() {
-        let mut q_layer: QubitLayer = QubitLayer::new(3);
-        let instructions = vec![
-            (QuantumOp::Hadamard, 0),
-            (QuantumOp::Hadamard, 1),
-            (QuantumOp::Hadamard, 2),
-            (QuantumOp::PauliX, 0),
-            (QuantumOp::PauliY, 1),
-            (QuantumOp::PauliZ, 2),
-            (QuantumOp::PauliXPar, 0),
-            (QuantumOp::PauliYPar, 1),
-            (QuantumOp::PauliZPar, 2),
-        ];
-        let _ = q_layer.execute(instructions);
-        for it in 0..q_layer.get_num_qubits() {
-            assert_eq!(
-                0.5,
-                (q_layer.measure_qubits()[it as usize] * 10.0).round() / 10.0
-            );
-        }
     }
 
     #[test]
