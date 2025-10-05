@@ -1,13 +1,13 @@
 [package]
-name = "quantum_state_sim"
+name = "lrm_sqim_cpu"
 version = "0.1.1"
 edition = "2021"
 authors = ["lrm <lrmmendes98@gmail.com>"]
 rust-version = "1.67"
 description = "A quantum circuit simulator"
 readme = "README.md"
-homepage = "https://github.com/luisrmendes/quantum_state_sim"
-repository = "https://github.com/luisrmendes/quantum_state_sim"
+homepage = "https://github.com/luisrmendes/lrm_sqim_cpu"
+repository = "https://github.com/luisrmendes/lrm_sqim_cpu"
 license = "MIT OR Apache-2.0"
 keywords = ["quantum", "simulator"]
 

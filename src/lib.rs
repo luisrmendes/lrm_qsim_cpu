@@ -7,7 +7,7 @@
 //! # Example
 //!
 //! ```
-//! use quantum_state_sim::{QubitLayer, QuantumOp};
+//! use lrm_sqim_cpu::{QubitLayer, QuantumOp};
 //!
 //! let mut q_layer: QubitLayer = QubitLayer::new(20);
 //!
@@ -291,7 +291,7 @@ impl QubitLayer {
     ///
     /// # Examples
     /// ```
-    /// use quantum_state_sim::{QubitLayer, QuantumOp};
+    /// use lrm_sqim_cpu::{QubitLayer, QuantumOp};
     ///
     /// let mut q_layer = QubitLayer::new(2);
     /// let instructions = vec![(QuantumOp::PauliX, 0), (QuantumOp::PauliX, 1)];
@@ -348,7 +348,7 @@ impl QubitLayer {
 
     /// Returns the number of qubits represented in the `QubitLayer`.  
     /// ```
-    /// use quantum_state_sim::QubitLayer;
+    /// use lrm_sqim_cpu::QubitLayer;
     ///
     /// let num_qubits = 20;
     /// let q_layer = QubitLayer::new(num_qubits);
@@ -363,7 +363,7 @@ impl QubitLayer {
     /// Equivalent to collapsing qubits to obtain its state.
     /// # Examples
     /// ```
-    /// use quantum_state_sim::{QubitLayer, QuantumOp};
+    /// use lrm_sqim_cpu::{QubitLayer, QuantumOp};
     ///
     /// let mut q_layer = QubitLayer::new(20);
     /// q_layer.execute(vec![(QuantumOp::Hadamard, 0)]);
@@ -393,7 +393,7 @@ impl QubitLayer {
     /// Creates a new `QubitLayer` representing `num_qubits` qubits.  
     /// # Examples
     /// ```
-    /// use quantum_state_sim::QubitLayer;
+    /// use lrm_sqim_cpu::QubitLayer;
     ///
     /// let q_layer = QubitLayer::new(20);
     /// ```

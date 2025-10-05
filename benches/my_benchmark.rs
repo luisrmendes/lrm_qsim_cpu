@@ -1,5 +1,5 @@
 use criterion::*;
-use quantum_state_sim::{self, QuantumOp, QubitLayer};
+use lrm_sqim_cpu::{self, QuantumOp, QubitLayer};
 
 fn bench_full_hadamard_par_24() {
     let num_qubits = 24;
