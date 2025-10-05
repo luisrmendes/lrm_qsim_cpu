@@ -236,7 +236,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
-name = "lrm_sqim_cpu"
+name = "lrm_qsim_cpu"
 version = "0.1.1"
 dependencies = [
  "criterion",
